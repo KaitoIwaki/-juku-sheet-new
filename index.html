@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>自習室宣言アプリ | マナビズム</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ===== VARIABLES ===== */
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f8f9fa;
+      --text: #1a1a2e;
+      --text2: #6b7280;
+      --border: #e5e7eb;
+      --blue: #3b82f6;
+      --blue-light: #dbeafe;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --orange: #f97316;
+      --orange-light: #ffedd5;
+      --red: #ef4444;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 12px;
+      --nav-h: 62px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --surface2: #263244;
+        --text: #f1f5f9;
+        --text2: #94a3b8;
+        --border: #334155;
+        --blue-light: #1e3a5f;
+        --green-light: #14532d;
+        --orange-light: #431407;
+        --shadow: 0 1px 3px rgba(0,0,0,0.4);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+      }
+    }
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: var(--nav-h);
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, button, select { font-family: inherit; }
+
+    /* ===== LAYOUT ===== */
+    .container { max-width: 640px; margin: 0 auto; padding: 0 14px 16px; }
+
+    /* ===== CARD ===== */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 10px;
+    }
+
+    /* ===== BUTTON ===== */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 12px 20px;
+      border: none; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.85; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+    .btn-blue   { background: var(--blue);   color: #fff; }
+    .btn-green  { background: var(--green);  color: #fff; }
+    .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+
+    /* ===== FORM ===== */
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+    .form-input {
+      width: 100%; padding: 11px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 1rem; background: var(--surface2); color: var(--text);
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--blue); }
+
+    /* ===== パスワード表示切替 ===== */
+    .pw-wrap {
+      position: relative; display: flex; align-items: center;
+    }
+    .pw-wrap .form-input {
+      padding-right: 44px; /* 目ボタン分の余白 */
+    }
+    .pw-toggle {
+      position: absolute; right: 10px;
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; color: var(--text2);
+      padding: 4px; border-radius: 4px;
+      transition: color 0.15s;
+      user-select: none; line-height: 1;
+    }
+    .pw-toggle:hover { color: var(--text); }
+
+    /* ===== AUTH SCREEN ===== */
+    #auth-screen {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      background: #eff6ff;
+      padding-bottom: 40px;
+    }
+
+    /* ヒーローエリア（青） */
+    .auth-hero {
+      width: 100%;
+      background: #1d4ed8;
+      padding: 52px 24px 72px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* 下部の白い波型 */
+    .auth-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 44px;
+      background: #eff6ff;
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    }
+    /* 装飾サークル */
+    .auth-hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+    }
+    .auth-hero-icon {
+      font-size: 3.2rem; display: block; margin-bottom: 12px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+    .auth-hero h1 {
+      font-size: 2rem; font-weight: 900; color: #ffffff;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .auth-hero-sub {
+      font-size: 0.85rem; color: rgba(255,255,255,0.75); margin-bottom: 16px;
+    }
+    .auth-hero-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fbbf24; color: #1d4ed8;
+      font-size: 0.78rem; font-weight: 800;
+      padding: 5px 14px; border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(251,191,36,0.4);
+    }
+
+    /* フォームカード（白） */
+    .auth-card {
+      background: #ffffff;
+      border-radius: 20px; padding: 28px 24px;
+      width: calc(100% - 40px); max-width: 400px;
+      box-shadow: 0 8px 32px rgba(29,78,216,0.13);
+      margin-top: -24px; position: relative; z-index: 1;
+    }
+
+    /* タブ */
+    .auth-tabs {
+      display: flex; background: #eff6ff;
+      border-radius: 10px; padding: 4px;
+      margin-bottom: 22px; gap: 4px;
+    }
+    .auth-tab {
+      flex: 1; padding: 10px; text-align: center; border-radius: 7px;
+      cursor: pointer; font-size: 0.9rem; font-weight: 700;
+      color: #6b7280; transition: all 0.2s; user-select: none;
+    }
+    .auth-tab.active {
+      background: #1d4ed8; color: #ffffff;
+      box-shadow: 0 2px 8px rgba(29,78,216,0.3);
+    }
+
+    /* フォーム入力（auth用オーバーライド） */
+    #auth-screen .form-input {
+      border: 2px solid #e5e7eb; background: #f9fafb; border-radius: 10px;
+    }
+    #auth-screen .form-input:focus { border-color: #1d4ed8; background: #fff; }
+    #auth-screen .btn-blue { background: #1d4ed8; font-size: 1rem; padding: 13px; border-radius: 10px; }
+
+    /* 区切り線 */
+    .auth-divider {
+      text-align: center; font-size: 0.78rem; color: #9ca3af;
+      margin: 16px 0; display: flex; align-items: center; gap: 10px;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: ''; flex: 1; height: 1px; background: #e5e7eb;
+    }
+
+    /* エラー表示 */
+    #auth-error {
+      font-size: 0.83rem; margin-top: 12px; display: none;
+      background: #fee2e2; color: #dc2626;
+      padding: 10px 12px; border-radius: 8px; border-left: 3px solid #dc2626;
+    }
+
+    /* ===== APP HEADER ===== */
+    .app-header {
+      background: var(--surface); padding: 11px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100;
+    }
+    .app-header-title { font-size: 1.05rem; font-weight: 800; }
+    .app-header-right { display: flex; align-items: center; gap: 8px; }
+    .user-name-tag { font-size: 0.8rem; color: var(--text2); }
+    .logout-btn {
+      font-size: 0.78rem; color: var(--text2);
+      background: none; border: 1.5px solid var(--border);
+      padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    }
+
+    /* ===== WEEK NAV ===== */
+    .week-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--surface); margin-bottom: 8px;
+      box-shadow: var(--shadow);
+    }
+    .week-nav-btn {
+      background: none; border: none; font-size: 1.6rem; cursor: pointer;
+      color: var(--text); padding: 2px 8px; line-height: 1;
+    }
+    .week-label { text-align: center; }
+    .week-label-main { font-size: 0.92rem; font-weight: 700; }
+    .week-back-btn {
+      display: block; font-size: 0.72rem; color: var(--blue);
+      cursor: pointer; margin-top: 2px; background: none; border: none;
+    }
+
+    /* ===== GOAL BOX ===== */
+    .goal-box {
+      background: var(--orange-light); border: 2px solid var(--orange);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+    }
+    .goal-box-title {
+      font-size: 0.83rem; font-weight: 800; color: var(--orange);
+      margin-bottom: 10px; display: flex; align-items: center; gap: 5px;
+    }
+    .goal-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .goal-input-group { display: flex; flex-direction: column; gap: 4px; }
+    .goal-input-label { font-size: 0.73rem; color: var(--text2); font-weight: 600; }
+    .goal-input {
+      padding: 9px 8px; border: 1.5px solid var(--orange); border-radius: 7px;
+      font-size: 1rem; font-weight: 700; background: var(--surface);
+      color: var(--text); text-align: center; width: 100%;
+    }
+    .goal-input:focus { outline: none; }
+
+    /* ===== TAB SWITCHER ===== */
+    .tab-switcher {
+      display: flex; background: var(--surface2);
+      border-radius: 10px; padding: 3px; margin-bottom: 10px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 6px; text-align: center;
+      border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 700;
+      color: var(--text2); border: none; background: none; transition: all 0.2s;
+    }
+    .tab-btn.active.blue  { background: var(--blue);  color: #fff; }
+    .tab-btn.active.green { background: var(--green); color: #fff; }
+
+    /* ===== DAY CARD ===== */
+    .day-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+      border-left: 4px solid var(--border); transition: border-color 0.2s;
+    }
+    .day-card.decl-set   { border-left-color: var(--blue); }
+    .day-card.rec-set    { border-left-color: var(--green); }
+    .day-card.is-today   { border-left-color: var(--orange); }
+    .day-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .day-label { font-weight: 800; font-size: 0.97rem; display: flex; align-items: center; gap: 6px; }
+    .day-date  { font-size: 0.78rem; color: var(--text2); font-weight: 400; }
+    .day-badge {
+      font-size: 0.67rem; font-weight: 700; padding: 2px 7px;
+      border-radius: 20px; background: var(--orange-light); color: var(--orange);
+    }
+    .day-duration { font-size: 0.85rem; font-weight: 700; color: var(--blue); }
+    .time-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .time-input-group { display: flex; flex-direction: column; gap: 4px; }
+    .time-input-label { font-size: 0.73rem; color: var(--text2); font-weight: 600; }
+    .time-input {
+      width: 100%; padding: 9px 8px;
+      border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.95rem; background: var(--surface2); color: var(--text);
+    }
+    .time-input:focus { outline: none; border-color: var(--blue); }
+
+    /* ===== RECORD INPUTS ===== */
+    .rec-section { margin-bottom: 10px; }
+    .rec-section-label { font-size: 0.76rem; color: var(--text2); font-weight: 600; margin-bottom: 5px; }
+    .rec-inputs { display: flex; align-items: center; gap: 5px; }
+    .rec-num-input {
+      width: 58px; padding: 7px 6px; text-align: center;
+      border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: 0.95rem; font-weight: 600; background: var(--surface2); color: var(--text);
+    }
+    .rec-num-input:focus { outline: none; border-color: var(--green); }
+    .rec-unit { font-size: 0.8rem; color: var(--text2); }
+    .decl-ref-badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.73rem; font-weight: 600; padding: 3px 9px;
+      background: var(--blue-light); color: var(--blue); border-radius: 20px;
+    }
+
+    /* ===== SUMMARY CARD ===== */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .summary-val  { font-size: 1.3rem; font-weight: 800; line-height: 1.2; }
+    .summary-val.blue   { color: var(--blue); }
+    .summary-val.green  { color: var(--green); }
+    .summary-val.orange { color: var(--orange); }
+    .summary-lbl { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+
+    /* ===== PROGRESS BAR ===== */
+    .prog-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 10px; }
+    .prog-fill  { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .prog-fill.green  { background: var(--green); }
+    .prog-fill.orange { background: var(--orange); }
+    .prog-fill.blue   { background: var(--blue); }
+
+    /* ===== BOTTOM NAV ===== */
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--nav-h); background: var(--surface);
+      display: flex; box-shadow: 0 -1px 0 var(--border), 0 -4px 16px rgba(0,0,0,0.05);
+      z-index: 200;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      cursor: pointer; border: none; background: none;
+      color: var(--text2); font-size: 0.67rem; font-weight: 600;
+      transition: color 0.15s; padding: 6px 4px;
+    }
+    .nav-item.active { color: var(--blue); }
+    .nav-icon { font-size: 1.45rem; line-height: 1; }
+
+    /* ===== SCREEN VISIBILITY ===== */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ===== EVERYONE SCREEN ===== */
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+    .filter-tab {
+      flex: 1; padding: 9px; text-align: center; border-radius: 8px;
+      cursor: pointer; font-size: 0.85rem; font-weight: 700;
+      border: 2px solid var(--border); background: transparent; color: var(--text2);
+      transition: all 0.2s;
+    }
+    .filter-tab.active { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+
+    .rank-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .rank-card.is-me { border: 2px solid var(--blue); }
+    .rank-num { font-size: 1.2rem; font-weight: 800; min-width: 30px; text-align: center; }
+    .rank-gold   { color: #f59e0b; }
+    .rank-silver { color: #9ca3af; }
+    .rank-bronze { color: #cd7c2e; }
+    .rank-info   { flex: 1; min-width: 0; }
+    .rank-name   { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+    .rank-dots   { display: flex; gap: 3px; margin-top: 5px; }
+    .rdot {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--border); flex-shrink: 0;
+    }
+    .rdot.filled { background: var(--green); }
+    .rdot.today  { background: var(--orange); }
+    .rank-days   { font-size: 0.72rem; color: var(--text2); margin-top: 3px; }
+    .rank-stats  { text-align: right; flex-shrink: 0; }
+    .rank-time   { font-size: 1.05rem; font-weight: 800; color: var(--green); }
+    .rank-rate   { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+    .me-badge {
+      font-size: 0.67rem; font-weight: 700; padding: 1px 6px;
+      background: var(--blue-light); color: var(--blue); border-radius: 20px;
+    }
+
+    /* ===== MY RECORD SCREEN ===== */
+    .chart-wrap {
+      display: flex; align-items: flex-end; gap: 5px;
+      height: 110px; padding: 0 2px;
+    }
+    .chart-col {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; height: 100%; justify-content: flex-end;
+    }
+    .chart-col-val { font-size: 0.6rem; color: var(--text2); font-weight: 600; min-height: 12px; }
+    .chart-bar-fill { width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; }
+    .chart-col-lbl { font-size: 0.6rem; color: var(--text2); white-space: nowrap; }
+
+    .achieve-row { margin-bottom: 11px; }
+    .achieve-row-head {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.82rem; margin-bottom: 4px;
+    }
+    .achieve-row-right { display: flex; gap: 10px; align-items: center; }
+    .achieve-time { color: var(--text2); }
+    .achieve-rate { font-weight: 700; }
+    .achieve-rate.good   { color: var(--green); }
+    .achieve-rate.medium { color: var(--blue); }
+
+    /* ===== ADMIN SCREEN ===== */
+    .admin-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; white-space: nowrap; }
+    .admin-table th {
+      background: var(--surface2); padding: 9px 10px;
+      text-align: left; font-weight: 700; color: var(--text2);
+      border-bottom: 2px solid var(--border); position: sticky; top: 0;
+    }
+    .admin-table td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .admin-table tr:hover td { background: var(--surface2); }
+
+    /* ===== BADGES ===== */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    }
+    .badge-blue   { background: var(--blue-light);   color: var(--blue); }
+    .badge-green  { background: var(--green-light);  color: var(--green); }
+    .badge-orange { background: var(--orange-light); color: var(--orange); }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: #fff; padding: 10px 22px;
+      border-radius: 22px; font-size: 0.88rem; z-index: 9999;
+      transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ===== MISC ===== */
+    .loading    { text-align: center; padding: 40px; color: var(--text2); }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
+    .section-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .section-title { font-size: 1.05rem; font-weight: 800; }
+    h3 { font-size: 0.95rem; font-weight: 700; }
+
+    /* ===== ADMIN SUB-TABS ===== */
+    .admin-subtabs {
+      display: flex; gap: 6px; margin-bottom: 12px;
+    }
+    .admin-subtab {
+      flex: 1; padding: 9px 4px; text-align: center; border-radius: 8px;
+      cursor: pointer; font-size: 0.78rem; font-weight: 700;
+      border: 2px solid var(--border); background: transparent; color: var(--text2);
+      transition: all 0.2s;
+    }
+    .admin-subtab.active {
+      border-color: var(--blue); color: var(--blue); background: var(--blue-light);
+    }
+
+    /* ===== ALERT CARDS ===== */
+    .alert-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .alert-card {
+      border-radius: var(--radius); padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .alert-card.red    { background: #FCEBEB; border: 0.5px solid #E24B4A; }
+    .alert-card.orange { background: #FAEEDA; border: 0.5px solid #BA7517; }
+    .alert-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+    }
+    .alert-dot.red    { background: #E24B4A; }
+    .alert-dot.orange { background: #BA7517; }
+    .alert-name { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+    .alert-reason { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+
+    /* ===== STAMP / COMMENT ===== */
+    .comment-student-card {
+      background: var(--surface); border-radius: var(--radius);
+      border: 0.5px solid var(--border); margin-bottom: 8px; overflow: hidden;
+    }
+    .comment-student-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; cursor: pointer;
+    }
+    .comment-student-name { font-weight: 700; font-size: 0.92rem; }
+    .comment-expand-icon { color: var(--text2); font-size: 0.85rem; transition: transform 0.2s; }
+    .comment-student-body { padding: 0 14px 14px; border-top: 0.5px solid var(--border); }
+    .stamp-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
+    .stamp-btn {
+      font-size: 1.4rem; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+      border: 2px solid var(--border); background: var(--surface2);
+      transition: all 0.15s; user-select: none;
+    }
+    .stamp-btn.selected {
+      border-color: var(--orange); background: var(--orange-light);
+      transform: scale(1.15);
+    }
+    .comment-textarea {
+      width: 100%; padding: 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; background: var(--surface2);
+      color: var(--text); resize: vertical; min-height: 72px;
+    }
+    .comment-textarea:focus { outline: none; border-color: var(--blue); }
+    .comment-send-btn {
+      margin-top: 8px; padding: 9px 16px; background: var(--blue); color: #fff;
+      border: none; border-radius: 8px; font-size: 0.88rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .comment-send-btn:active { opacity: 0.8; }
+    .comment-preview {
+      font-size: 0.8rem; color: var(--text2); margin-top: 6px;
+      padding: 6px 10px; background: var(--surface2); border-radius: 6px;
+    }
+
+    /* ===== 生徒管理 ===== */
+    .student-mgmt-card {
+      background: var(--surface); border-radius: var(--radius);
+      border: 0.5px solid var(--border); margin-bottom: 8px; overflow: hidden;
+    }
+    .student-mgmt-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px;
+    }
+    .student-mgmt-info { flex: 1; min-width: 0; }
+    .student-mgmt-name { font-weight: 700; font-size: 0.92rem; }
+    .student-mgmt-sub  { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+    .student-edit-btn {
+      font-size: 0.8rem; padding: 5px 12px; border-radius: 6px;
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text2); cursor: pointer; flex-shrink: 0;
+    }
+    .student-edit-form {
+      padding: 0 14px 14px; border-top: 0.5px solid var(--border);
+      display: none;
+    }
+    .student-edit-form.open { display: block; }
+    .grade-select {
+      width: 100%; padding: 9px 10px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.95rem; background: var(--surface2);
+      color: var(--text); margin-bottom: 8px;
+    }
+    .grade-tag {
+      font-size: 0.72rem; color: var(--blue); background: var(--blue-light);
+      padding: 2px 8px; border-radius: 20px; font-weight: 600;
+    }
+
+    /* ===== 講師コメント（生徒側） ===== */
+    .teacher-comment-card {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+      border: 0.5px solid var(--blue); border-radius: var(--radius); padding: 14px;
+      margin-top: 12px;
+    }
+    .teacher-comment-title {
+      font-size: 0.85rem; font-weight: 800; color: var(--blue);
+      margin-bottom: 10px; display: flex; align-items: center; gap: 5px;
+    }
+    .teacher-stamps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: 1.5rem; }
+    .teacher-comment-text { font-size: 0.9rem; color: var(--text); line-height: 1.6; }
+
+    /* ===== 講師バッジ ===== */
+    .teacher-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.72rem; font-weight: 800; padding: 3px 10px;
+      background: #fef3c7; color: #92400e;
+      border: 1.5px solid #f59e0b; border-radius: 20px;
+    }
+    .section-divider {
+      font-size: 0.75rem; font-weight: 800; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 8px;
+      margin: 14px 0 10px;
+    }
+    .section-divider::before, .section-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ===== SETTINGS SCREEN ===== */
+    #settings-screen {
+      display: none; position: fixed; inset: 0;
+      background: var(--bg); z-index: 500;
+      overflow-y: auto; padding-bottom: 40px;
+    }
+    .settings-header {
+      background: var(--surface); padding: 11px 16px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: var(--shadow); position: sticky; top: 0; z-index: 10;
+    }
+    .back-btn {
+      background: none; border: none; font-size: 1rem; font-weight: 700;
+      color: var(--blue); cursor: pointer; padding: 4px 8px 4px 0;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .settings-title { font-size: 1.05rem; font-weight: 800; }
+    .settings-icon-btn {
+      background: none; border: none; font-size: 1.3rem; cursor: pointer;
+      padding: 4px 6px; border-radius: 8px; transition: background 0.15s;
+      color: var(--text2);
+    }
+    .settings-icon-btn:hover { background: var(--surface2); }
+    .danger-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 12px 20px; border: none; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      background: #fee2e2; color: var(--red); transition: opacity 0.15s;
+    }
+    .danger-btn:active { opacity: 0.8; }
+    .settings-divider {
+      font-size: 0.75rem; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 6px 0 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="auth-screen">
+
+  <!-- ヒーローエリア -->
+  <div class="auth-hero">
+    <span class="auth-hero-icon">📚</span>
+    <h1>自習室宣言</h1>
+    <p class="auth-hero-sub">マナビズム 自習室管理アプリ</p>
+    <div class="auth-hero-badge">⭐ 毎日の学習を記録・共有しよう</div>
+  </div>
+
+  <!-- フォームカード -->
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">ログイン</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">新規登録</div>
+    </div>
+
+    <!-- Login -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">📧 メールアドレス</label>
+        <input type="email" id="login-email" class="form-input" placeholder="email@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">🔑 パスワード</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-password" class="form-input" placeholder="パスワード" autocomplete="current-password">
+          <button type="button" class="pw-toggle"
+            onmousedown="showPw('login-password')" onmouseup="hidePw('login-password')" onmouseleave="hidePw('login-password')"
+            ontouchstart="showPw('login-password')" ontouchend="hidePw('login-password')"
+            title="押している間パスワードを表示">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="login()">ログイン →</button>
+    </div>
+
+    <!-- Register -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">👤 氏名</label>
+        <input type="text" id="reg-name" class="form-input" placeholder="山田 太郎" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">📧 メールアドレス</label>
+        <input type="email" id="reg-email" class="form-input" placeholder="email@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">🔑 パスワード（6文字以上）</label>
+        <div class="pw-wrap">
+          <input type="password" id="reg-password" class="form-input" placeholder="パスワード" autocomplete="new-password">
+          <button type="button" class="pw-toggle"
+            onmousedown="showPw('reg-password')" onmouseup="hidePw('reg-password')" onmouseleave="hidePw('reg-password')"
+            ontouchstart="showPw('reg-password')" ontouchend="hidePw('reg-password')"
+            title="押している間パスワードを表示">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="register()">アカウント作成 →</button>
+    </div>
+
+    <div id="auth-error"></div>
+
+    <!-- フッター -->
+    <div class="auth-divider" style="margin-top:20px">安全に暗号化されています 🔒</div>
+  </div>
+</div>
+
+<!-- ===== APP SCREEN ===== -->
+<div id="app-screen" style="display:none">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="app-header-title">📚 自習室宣言</div>
+    <div class="app-header-right">
+      <span class="user-name-tag" id="header-name"></span>
+      <button class="settings-icon-btn" onclick="showSettings()" title="設定">⚙️</button>
+    </div>
+  </div>
+
+  <!-- ===== DECLARATION SCREEN ===== -->
+  <div id="screen-declaration" class="screen active">
+    <div class="week-nav">
+      <button class="week-nav-btn" onclick="changeWeek(-1)">‹</button>
+      <div class="week-label">
+        <div class="week-label-main" id="decl-week-label">---</div>
+        <button class="week-back-btn" onclick="goToCurrentWeek()" id="decl-back-btn" style="display:none">今週に戻る</button>
+      </div>
+      <button class="week-nav-btn" onclick="changeWeek(1)">›</button>
+    </div>
+
+    <div class="container">
+      <!-- Goal Box (always visible) -->
+      <div class="goal-box">
+        <div class="goal-box-title">🎯 今週の目標</div>
+        <div class="goal-inputs">
+          <div class="goal-input-group">
+            <div class="goal-input-label">🏫 自習室 目標時間（時間）</div>
+            <input type="number" id="goal-study" class="goal-input" min="0" max="100" step="0.5" placeholder="0" oninput="updateRecordSummary()">
+          </div>
+          <div class="goal-input-group">
+            <div class="goal-input-label">🚃 隙間時間 目標（時間）</div>
+            <input type="number" id="goal-gap" class="goal-input" min="0" max="50" step="0.5" placeholder="0" oninput="updateRecordSummary()">
+          </div>
+        </div>
+      </div>
+
+      <!-- 講師コメントエリア（常に上部に表示） -->
+      <div id="teacher-comment-area" style="display:none;margin-bottom:10px"></div>
+
+      <!-- Tab Switcher -->
+      <div class="tab-switcher">
+        <button class="tab-btn active blue" id="tab-btn-decl" onclick="switchTab('declaration')">📋 宣言（予定時間）</button>
+        <button class="tab-btn green"       id="tab-btn-rec"  onclick="switchTab('record')">✅ 実績を記録</button>
+      </div>
+
+      <!-- Declaration Tab -->
+      <div id="tab-decl-content">
+        <div id="declaration-days"></div>
+        <div class="card" id="decl-summary" style="margin-bottom:10px">
+          <h3 style="margin-bottom:12px">📊 宣言合計</h3>
+          <div class="summary-grid">
+            <div>
+              <div class="summary-val blue" id="decl-total">0分</div>
+              <div class="summary-lbl">合計予定時間</div>
+            </div>
+            <div>
+              <div class="summary-val" id="decl-days">0日</div>
+              <div class="summary-lbl">通塾予定日数</div>
+            </div>
+            <div>
+              <div class="summary-val blue" id="decl-avg">--</div>
+              <div class="summary-lbl">1日平均</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-blue" onclick="saveDeclarations()">💾 宣言を保存</button>
+      </div>
+
+      <!-- Record Tab -->
+      <div id="tab-rec-content" style="display:none">
+        <div id="record-days"></div>
+        <div class="card" style="margin-bottom:10px">
+          <h3 style="margin-bottom:12px">📊 週間実績</h3>
+          <div class="summary-grid">
+            <div>
+              <div class="summary-val green" id="rec-study-total">0分</div>
+              <div class="summary-lbl">自習室 合計</div>
+            </div>
+            <div>
+              <div class="summary-val blue" id="rec-gap-total">0分</div>
+              <div class="summary-lbl">隙間時間 合計</div>
+            </div>
+            <div>
+              <div class="summary-val orange" id="rec-rate">--%</div>
+              <div class="summary-lbl">達成率</div>
+            </div>
+          </div>
+          <div class="prog-wrap">
+            <div class="prog-fill green" id="rec-progress" style="width:0%"></div>
+          </div>
+        </div>
+        <button class="btn btn-green" onclick="saveRecords()">💾 実績を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EVERYONE SCREEN ===== -->
+  <div id="screen-everyone" class="screen">
+    <div class="container" style="padding-top:14px">
+      <div class="section-head">
+        <div class="section-title">👥 みんなの状況</div>
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" id="filter-week"  onclick="switchEvFilter('week')">今週</button>
+        <button class="filter-tab"        id="filter-total" onclick="switchEvFilter('total')">累計</button>
+      </div>
+      <div id="everyone-list"><div class="loading">読み込み中...</div></div>
+    </div>
+  </div>
+
+  <!-- ===== MY RECORD SCREEN ===== -->
+  <div id="screen-myrecord" class="screen">
+    <div class="container" style="padding-top:14px">
+      <div class="section-head">
+        <div class="section-title">📊 自分の記録</div>
+      </div>
+      <div id="myrecord-content"><div class="loading">読み込み中...</div></div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN SCREEN ===== -->
+  <div id="screen-admin" class="screen">
+    <div class="week-nav">
+      <button class="week-nav-btn" onclick="changeAdminWeek(-1)">‹</button>
+      <div class="week-label">
+        <div class="week-label-main" id="admin-week-label">---</div>
+      </div>
+      <button class="week-nav-btn" onclick="changeAdminWeek(1)">›</button>
+    </div>
+    <div class="container">
+      <div class="section-head" style="margin-bottom:10px">
+        <div class="section-title">⚙️ 管理者画面</div>
+      </div>
+      <!-- サブタブ（底部ナビで代替のため非表示） -->
+      <div class="admin-subtabs" style="display:none">
+        <button class="admin-subtab active" id="asub-status"   onclick="switchAdminTab('status')">📊 通塾状況</button>
+        <button class="admin-subtab"        id="asub-comment"  onclick="switchAdminTab('comment')">💬 コメント</button>
+        <button class="admin-subtab"        id="asub-students" onclick="switchAdminTab('students')">👤 生徒管理</button>
+      </div>
+      <div id="admin-content"><div class="loading">読み込み中...</div></div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS SCREEN ===== -->
+  <div id="settings-screen">
+    <div class="settings-header">
+      <button class="back-btn" onclick="hideSettings()">‹ 戻る</button>
+      <div class="settings-title">⚙️ 設定</div>
+    </div>
+    <div class="container" style="padding-top:16px">
+
+      <!-- プロフィール -->
+      <div class="card">
+        <h3 style="margin-bottom:14px">👤 プロフィール</h3>
+        <div class="form-group">
+          <label class="form-label">メールアドレス</label>
+          <input type="email" id="settings-email" class="form-input"
+                 readonly style="opacity:0.55;cursor:default">
+        </div>
+        <div class="form-group">
+          <label class="form-label">氏名</label>
+          <input type="text" id="settings-name" class="form-input" placeholder="山田 太郎">
+        </div>
+        <button class="btn btn-blue" id="save-name-btn" onclick="saveName()">💾 名前を保存</button>
+      </div>
+
+      <!-- パスワード変更 -->
+      <div class="card">
+        <h3 style="margin-bottom:14px">🔑 パスワード変更</h3>
+        <div class="form-group">
+          <label class="form-label">新しいパスワード（6文字以上）</label>
+          <input type="text" id="settings-newpass" class="form-input" placeholder="新しいパスワード" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">新しいパスワード（確認）</label>
+          <input type="text" id="settings-confpass" class="form-input" placeholder="もう一度入力" autocomplete="new-password">
+        </div>
+        <button class="btn btn-outline" id="save-pass-btn" onclick="changePassword()">🔑 パスワードを変更</button>
+      </div>
+
+      <!-- アカウント -->
+      <div class="card">
+        <div class="settings-divider">アカウント</div>
+        <button class="danger-btn" onclick="logout()">🚪 ログアウト</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" id="nav-declaration" onclick="showScreen('declaration')">
+      <span class="nav-icon">📋</span><span>宣言・実績</span>
+    </button>
+    <button class="nav-item" id="nav-everyone" onclick="showScreen('everyone')">
+      <span class="nav-icon">👥</span><span>みんなの状況</span>
+    </button>
+    <button class="nav-item" id="nav-myrecord" onclick="showScreen('myrecord')">
+      <span class="nav-icon">📊</span><span>自分の記録</span>
+    </button>
+    <!-- 管理者専用ナビ（admin ログイン時のみ表示） -->
+    <button class="nav-item" id="nav-admin-status"   onclick="showAdminDirect('status')"   style="display:none">
+      <span class="nav-icon">📊</span><span>通塾状況</span>
+    </button>
+    <button class="nav-item" id="nav-admin-comment"  onclick="showAdminDirect('comment')"  style="display:none">
+      <span class="nav-icon">💬</span><span>コメント</span>
+    </button>
+    <button class="nav-item" id="nav-admin-students" onclick="showAdminDirect('students')" style="display:none">
+      <span class="nav-icon">👤</span><span>生徒管理</span>
+    </button>
+    <button class="nav-item" id="nav-admin-ranking" onclick="showAdminDirect('ranking')" style="display:none">
+      <span class="nav-icon">🏆</span><span>ランキング</span>
+    </button>
+    <!-- 旧管理者タブ（常に非表示） -->
+    <button class="nav-item" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙️</span><span>管理者</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ============================================================
+//  CONFIGURATION — ここを書き換えてください
+// ============================================================
+const SUPABASE_URL      = 'https://rnvqebbafgumkyauvgtn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJudnFlYmJhZmd1bWt5YXV2Z3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDEyODQsImV4cCI6MjA5MDExNzI4NH0.by-GVlbEIHOK0SPee1kJ27G-qRlViLHPq3YyK_QmDW4';
+const ADMIN_EMAILS      = ['iiiwakikaitooo@gmail.com', 'test_teacher@gmail.com'];
+
+// ============================================================
+//  SUPABASE INIT
+// ============================================================
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============================================================
+//  STATE
+// ============================================================
+let currentUser    = null;
+let currentProfile = null;
+let currentWeekStart = getWeekStart();
+let adminWeekStart   = getWeekStart();
+let currentScreen    = 'declaration';
+let currentTab       = 'declaration';
+let everyoneFilter   = 'week';
+let adminSubTab = 'status';
+
+// Per-week data (re-fetched on week change)
+let declData   = {}; // dayIndex -> { start_time, end_time }
+let recData    = {}; // dayIndex -> { study_minutes, gap_minutes }
+let goalData   = { study_room_goal_minutes: 0, gap_goal_minutes: 0 };
+
+const DAY_NAMES = ['月', '火', '水', '木', '金', '土', '日'];
+
+// ============================================================
+//  NAME HELPER（旧スキーマ full_name にも対応）
+// ============================================================
+function getName(profile) {
+  if (!profile) return '不明';
+  return profile.name || profile.full_name || '不明';
+}
+
+// ============================================================
+//  UTILITY
+// ============================================================
+function getWeekStart(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = (day === 0) ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatISO(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatWeekLabel(ws) {
+  const we = new Date(ws);
+  we.setDate(we.getDate() + 6);
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  return `${ws.getFullYear()}年 ${fmt(ws)}（月）〜 ${fmt(we)}（日）`;
+}
+
+function mToHM(min) {
+  if (!min || min <= 0) return '0分';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}分`;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
+
+function mToH(min) {
+  if (!min || min <= 0) return '0h';
+  return `${(min / 60).toFixed(1)}h`;
+}
+
+function timeToMin(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+function isToday(ws, dayIdx) {
+  const d = new Date(ws);
+  d.setDate(d.getDate() + dayIdx);
+  const t = new Date();
+  return d.getFullYear() === t.getFullYear() &&
+         d.getMonth()    === t.getMonth() &&
+         d.getDate()     === t.getDate();
+}
+
+function getDayDate(ws, dayIdx) {
+  const d = new Date(ws);
+  d.setDate(d.getDate() + dayIdx);
+  return d;
+}
+
+function showToast(msg, ms = 2500) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms);
+}
+
+// ============================================================
+//  AUTH
+// ============================================================
+function switchAuthTab(tab) {
+  const tabs = document.querySelectorAll('.auth-tab');
+  tabs[0].classList.toggle('active', tab === 'login');
+  tabs[1].classList.toggle('active', tab === 'register');
+  document.getElementById('login-form').style.display    = tab === 'login'    ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  setAuthError('');
+}
+
+function setAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// 押している間だけパスワードを表示
+function showPw(inputId) {
+  document.getElementById(inputId).type = 'text';
+}
+function hidePw(inputId) {
+  document.getElementById(inputId).type = 'password';
+}
+
+async function login() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { setAuthError('メールアドレスとパスワードを入力してください'); return; }
+
+  setAuthError('');
+  const btn = document.querySelector('#login-form .btn');
+  btn.disabled = true; btn.textContent = 'ログイン中...';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false; btn.textContent = 'ログイン';
+
+  if (error) { setAuthError('ログイン失敗: ' + error.message); return; }
+
+  // onAuthStateChange のバックアップとして直接ハンドル
+  if (data?.session) await handleSession(data.session);
+}
+
+async function register() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!name || !email || !password) { setAuthError('全ての項目を入力してください'); return; }
+  if (password.length < 6) { setAuthError('パスワードは6文字以上にしてください'); return; }
+
+  setAuthError('');
+  const btn = document.querySelector('#register-form .btn');
+  btn.disabled = true; btn.textContent = '登録中...';
+
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { name } }
+  });
+
+  btn.disabled = false; btn.textContent = '新規登録';
+
+  if (error) { setAuthError('登録失敗: ' + error.message); return; }
+
+  // プロフィール作成
+  if (data.user) {
+    await sb.from('profiles').upsert({ id: data.user.id, name, email }, { onConflict: 'id' });
+  }
+  showToast('登録完了！');
+  if (data?.session) await handleSession(data.session);
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  document.getElementById('settings-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display  = 'none';
+}
+
+// ============================================================
+//  SETTINGS SCREEN
+// ============================================================
+function showSettings() {
+  document.getElementById('settings-screen').style.display = 'block';
+  document.getElementById('settings-email').value = currentUser?.email || '';
+  document.getElementById('settings-name').value  = getName(currentProfile);
+  document.getElementById('settings-newpass').value  = '';
+  document.getElementById('settings-confpass').value = '';
+}
+
+function hideSettings() {
+  document.getElementById('settings-screen').style.display = 'none';
+}
+
+async function saveName() {
+  const name = document.getElementById('settings-name').value.trim();
+  if (!name) { showToast('名前を入力してください'); return; }
+
+  const btn = document.getElementById('save-name-btn');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  const { error } = await sb.from('profiles')
+    .update({ name })
+    .eq('id', currentUser.id);
+
+  btn.disabled = false; btn.innerHTML = '💾 名前を保存';
+
+  if (error) { showToast('❌ 保存失敗: ' + error.message); return; }
+
+  if (currentProfile) currentProfile.name = name;
+  document.getElementById('header-name').textContent = name;
+  showToast('✅ 名前を更新しました！');
+}
+
+async function changePassword() {
+  const np = document.getElementById('settings-newpass').value;
+  const cp = document.getElementById('settings-confpass').value;
+  if (!np) { showToast('新しいパスワードを入力してください'); return; }
+  if (np.length < 6) { showToast('パスワードは6文字以上にしてください'); return; }
+  if (np !== cp) { showToast('パスワードが一致しません'); return; }
+
+  const btn = document.getElementById('save-pass-btn');
+  btn.disabled = true; btn.textContent = '変更中...';
+
+  const { error } = await sb.auth.updateUser({ password: np });
+
+  btn.disabled = false; btn.innerHTML = '🔑 パスワードを変更';
+
+  if (error) { showToast('❌ 変更失敗: ' + error.message); return; }
+
+  document.getElementById('settings-newpass').value  = '';
+  document.getElementById('settings-confpass').value = '';
+  showToast('✅ パスワードを変更しました！');
+}
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showScreen(name) {
+  currentScreen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`screen-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+
+  if (name === 'declaration') loadDeclarationScreen();
+  else if (name === 'everyone')  loadEveryoneScreen();
+  else if (name === 'myrecord')  loadMyRecordScreen();
+  else if (name === 'admin')     loadAdminScreen();
+}
+
+// ============================================================
+//  WEEK NAV
+// ============================================================
+function changeWeek(delta) {
+  currentWeekStart = new Date(currentWeekStart);
+  currentWeekStart.setDate(currentWeekStart.getDate() + delta * 7);
+  loadDeclarationScreen();
+}
+
+function goToCurrentWeek() {
+  currentWeekStart = getWeekStart();
+  loadDeclarationScreen();
+}
+
+function changeAdminWeek(delta) {
+  adminWeekStart = new Date(adminWeekStart);
+  adminWeekStart.setDate(adminWeekStart.getDate() + delta * 7);
+  loadAdminScreen();
+}
+
+// ============================================================
+//  TAB SWITCHER
+// ============================================================
+function switchTab(tab) {
+  currentTab = tab;
+  const isDecl = tab === 'declaration';
+  document.getElementById('tab-btn-decl').classList.toggle('active', isDecl);
+  document.getElementById('tab-btn-decl').classList.toggle('blue', isDecl);
+  document.getElementById('tab-btn-rec').classList.toggle('active', !isDecl);
+  document.getElementById('tab-btn-rec').classList.toggle('green', !isDecl);
+  document.getElementById('tab-decl-content').style.display = isDecl ? 'block' : 'none';
+  document.getElementById('tab-rec-content').style.display  = isDecl ? 'none'  : 'block';
+}
+
+// ============================================================
+//  DECLARATION SCREEN — LOAD
+// ============================================================
+async function loadDeclarationScreen() {
+  const wsStr = formatISO(currentWeekStart);
+  document.getElementById('decl-week-label').textContent = formatWeekLabel(currentWeekStart);
+
+  // Show "今週に戻る" only when not on current week
+  const isCurrentWeek = wsStr === formatISO(getWeekStart());
+  document.getElementById('decl-back-btn').style.display = isCurrentWeek ? 'none' : 'block';
+
+  // Load goals
+  const { data: g } = await sb.from('weekly_goals').select('*')
+    .eq('user_id', currentUser.id).eq('week_start', wsStr).maybeSingle();
+  goalData = g || { study_room_goal_minutes: 0, gap_goal_minutes: 0 };
+  document.getElementById('goal-study').value = goalData.study_room_goal_minutes
+    ? (goalData.study_room_goal_minutes / 60) : '';
+  document.getElementById('goal-gap').value = goalData.gap_goal_minutes
+    ? (goalData.gap_goal_minutes / 60) : '';
+
+  // Load declarations
+  const { data: decls } = await sb.from('declarations').select('*')
+    .eq('user_id', currentUser.id).eq('week_start', wsStr);
+  declData = {};
+  (decls || []).forEach(d => { declData[d.day_of_week] = { start_time: d.start_time, end_time: d.end_time }; });
+
+  // Load records
+  const { data: recs } = await sb.from('records').select('*')
+    .eq('user_id', currentUser.id).eq('week_start', wsStr);
+  recData = {};
+  (recs || []).forEach(r => { recData[r.day_of_week] = { study_minutes: r.study_minutes, gap_minutes: r.gap_minutes }; });
+
+  renderDeclarationDays();
+  renderRecordDays();
+  updateDeclSummary();
+  updateRecordSummary();
+  // 講師コメント読み込み
+  await loadTeacherComment(wsStr);
+}
+
+// ============================================================
+//  DECLARATION DAYS RENDER
+// ============================================================
+function renderDeclarationDays() {
+  const container = document.getElementById('declaration-days');
+  container.innerHTML = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d    = declData[i] || {};
+    const today = isToday(currentWeekStart, i);
+    const dd   = getDayDate(currentWeekStart, i);
+    const hasD = !!(d.start_time && d.end_time);
+    const dur  = hasD ? Math.max(0, timeToMin(d.end_time) - timeToMin(d.start_time)) : 0;
+
+    const card = document.createElement('div');
+    card.className = `day-card ${hasD ? 'decl-set' : ''} ${today ? 'is-today' : ''}`;
+    card.innerHTML = `
+      <div class="day-header">
+        <div class="day-label">
+          ${DAY_NAMES[i]}曜日
+          <span class="day-date">${dd.getMonth()+1}/${dd.getDate()}</span>
+          ${today ? '<span class="day-badge">今日</span>' : ''}
+        </div>
+        <div class="day-duration" id="decl-dur-${i}">${dur > 0 ? mToHM(dur) : ''}</div>
+      </div>
+      <div class="time-inputs">
+        <div class="time-input-group">
+          <div class="time-input-label">開始時刻</div>
+          <input type="time" class="time-input" id="decl-start-${i}" value="${d.start_time || ''}" oninput="onDeclChange(${i})">
+        </div>
+        <div class="time-input-group">
+          <div class="time-input-label">終了時刻</div>
+          <input type="time" class="time-input" id="decl-end-${i}" value="${d.end_time || ''}" oninput="onDeclChange(${i})">
+        </div>
+      </div>`;
+    container.appendChild(card);
+  }
+}
+
+function onDeclChange(i) {
+  const start = document.getElementById(`decl-start-${i}`)?.value || '';
+  const end   = document.getElementById(`decl-end-${i}`)?.value   || '';
+  declData[i] = { start_time: start, end_time: end };
+
+  const dur = (start && end) ? Math.max(0, timeToMin(end) - timeToMin(start)) : 0;
+  const durEl = document.getElementById(`decl-dur-${i}`);
+  if (durEl) durEl.textContent = dur > 0 ? mToHM(dur) : '';
+
+  const card = document.getElementById(`decl-start-${i}`)?.closest('.day-card');
+  if (card) {
+    card.classList.toggle('decl-set', dur > 0);
+  }
+  updateDeclSummary();
+}
+
+function updateDeclSummary() {
+  let total = 0, days = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = declData[i];
+    if (d?.start_time && d?.end_time) {
+      const dur = Math.max(0, timeToMin(d.end_time) - timeToMin(d.start_time));
+      if (dur > 0) { total += dur; days++; }
+    }
+  }
+  document.getElementById('decl-total').textContent = mToHM(total);
+  document.getElementById('decl-days').textContent  = `${days}日`;
+  document.getElementById('decl-avg').textContent   = days > 0 ? mToHM(Math.round(total / days)) : '--';
+}
+
+// ============================================================
+//  RECORD DAYS RENDER
+// ============================================================
+function renderRecordDays() {
+  const container = document.getElementById('record-days');
+  container.innerHTML = '';
+
+  for (let i = 0; i < 7; i++) {
+    const r    = recData[i]  || {};
+    const d    = declData[i] || {};
+    const today = isToday(currentWeekStart, i);
+    const dd   = getDayDate(currentWeekStart, i);
+    const hasR = !!(r.study_minutes > 0 || r.gap_minutes > 0);
+
+    const declDur = (d.start_time && d.end_time)
+      ? Math.max(0, timeToMin(d.end_time) - timeToMin(d.start_time)) : 0;
+
+    const sH = r.study_minutes ? Math.floor(r.study_minutes / 60) : 0;
+    const sM = r.study_minutes ? (r.study_minutes % 60)           : 0;
+    const gH = r.gap_minutes   ? Math.floor(r.gap_minutes / 60)   : 0;
+    const gM = r.gap_minutes   ? (r.gap_minutes % 60)             : 0;
+
+    const card = document.createElement('div');
+    card.className = `day-card ${hasR ? 'rec-set' : ''} ${today ? 'is-today' : ''}`;
+    card.innerHTML = `
+      <div class="day-header">
+        <div class="day-label">
+          ${DAY_NAMES[i]}曜日
+          <span class="day-date">${dd.getMonth()+1}/${dd.getDate()}</span>
+          ${today ? '<span class="day-badge">今日</span>' : ''}
+        </div>
+        ${declDur > 0 ? `<span class="decl-ref-badge">📋 宣言 ${mToHM(declDur)}</span>` : ''}
+      </div>
+      <div class="rec-section">
+        <div class="rec-section-label">🏫 自習室 学習時間</div>
+        <div class="rec-inputs">
+          <input type="number" class="rec-num-input" id="rec-sh-${i}" min="0" max="16" value="${sH || ''}" placeholder="0" oninput="onRecChange(${i})">
+          <span class="rec-unit">時間</span>
+          <input type="number" class="rec-num-input" id="rec-sm-${i}" min="0" max="59" value="${sM || ''}" placeholder="0" oninput="onRecChange(${i})">
+          <span class="rec-unit">分</span>
+        </div>
+      </div>
+      <div class="rec-section">
+        <div class="rec-section-label">🚃 隙間時間</div>
+        <div class="rec-inputs">
+          <input type="number" class="rec-num-input" id="rec-gh-${i}" min="0" max="16" value="${gH || ''}" placeholder="0" oninput="onRecChange(${i})">
+          <span class="rec-unit">時間</span>
+          <input type="number" class="rec-num-input" id="rec-gm-${i}" min="0" max="59" value="${gM || ''}" placeholder="0" oninput="onRecChange(${i})">
+          <span class="rec-unit">分</span>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  }
+}
+
+function onRecChange(i) {
+  const sH = parseInt(document.getElementById(`rec-sh-${i}`)?.value) || 0;
+  const sM = parseInt(document.getElementById(`rec-sm-${i}`)?.value) || 0;
+  const gH = parseInt(document.getElementById(`rec-gh-${i}`)?.value) || 0;
+  const gM = parseInt(document.getElementById(`rec-gm-${i}`)?.value) || 0;
+  recData[i] = { study_minutes: sH * 60 + sM, gap_minutes: gH * 60 + gM };
+  updateRecordSummary();
+}
+
+function updateRecordSummary() {
+  let study = 0, gap = 0;
+  for (let i = 0; i < 7; i++) {
+    if (recData[i]) { study += recData[i].study_minutes || 0; gap += recData[i].gap_minutes || 0; }
+  }
+  const goalS = Math.round((parseFloat(document.getElementById('goal-study').value) || 0) * 60);
+  const goalG = Math.round((parseFloat(document.getElementById('goal-gap').value)   || 0) * 60);
+  const goalT = goalS + goalG;
+  const actual = study + gap;
+  const rate   = goalT > 0 ? Math.round((actual / goalT) * 100) : null;
+
+  document.getElementById('rec-study-total').textContent = mToHM(study);
+  document.getElementById('rec-gap-total').textContent   = mToHM(gap);
+  document.getElementById('rec-rate').textContent        = rate !== null ? `${Math.min(rate, 999)}%` : '--%';
+
+  const pct = rate !== null ? Math.min(rate, 100) : 0;
+  const prog = document.getElementById('rec-progress');
+  prog.style.width = `${pct}%`;
+  prog.className   = `prog-fill ${pct >= 100 ? 'orange' : 'green'}`;
+}
+
+async function loadTeacherComment(wsStr) {
+  const area = document.getElementById('teacher-comment-area');
+  if (!area) return;
+  const { data: tc } = await sb.from('teacher_comments').select('*')
+    .eq('target_user_id', currentUser.id).eq('week_id', wsStr).maybeSingle();
+  if (!tc || (!tc.stamps?.length && !tc.comment)) {
+    area.style.display = 'none'; return;
+  }
+  area.style.display = 'block';
+  const stampsHtml = tc.stamps?.length
+    ? `<div class="teacher-stamps">${tc.stamps.join('')}</div>` : '';
+  const commentHtml = tc.comment
+    ? `<div class="teacher-comment-text">${tc.comment.replace(/\n/g,'<br>')}</div>` : '';
+  area.innerHTML = `
+    <div class="teacher-comment-card">
+      <div class="teacher-comment-title">💬 講師からのメッセージ</div>
+      ${stampsHtml}${commentHtml}
+    </div>`;
+}
+
+// ============================================================
+//  SAVE DECLARATIONS
+// ============================================================
+async function saveDeclarations() {
+  const wsStr = formatISO(currentWeekStart);
+  const studyGoal = Math.round((parseFloat(document.getElementById('goal-study').value) || 0) * 60);
+  const gapGoal   = Math.round((parseFloat(document.getElementById('goal-gap').value)   || 0) * 60);
+
+  // Upsert goals
+  await sb.from('weekly_goals').upsert({
+    user_id: currentUser.id, week_start: wsStr,
+    study_room_goal_minutes: studyGoal,
+    gap_goal_minutes: gapGoal,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id,week_start' });
+
+  // Upsert declarations
+  const rows = [];
+  for (let i = 0; i < 7; i++) {
+    const d = declData[i];
+    if (d?.start_time || d?.end_time) {
+      rows.push({
+        user_id: currentUser.id, week_start: wsStr, day_of_week: i,
+        start_time: d.start_time || null,
+        end_time:   d.end_time   || null,
+        updated_at: new Date().toISOString()
+      });
+    }
+  }
+  if (rows.length > 0) {
+    const { error } = await sb.from('declarations')
+      .upsert(rows, { onConflict: 'user_id,week_start,day_of_week' });
+    if (error) { showToast('❌ 保存エラー: ' + error.message); return; }
+  }
+
+  goalData.study_room_goal_minutes = studyGoal;
+  goalData.gap_goal_minutes        = gapGoal;
+  updateRecordSummary();
+  showToast('✅ 宣言を保存しました！');
+}
+
+// ============================================================
+//  SAVE RECORDS
+// ============================================================
+async function saveRecords() {
+  const wsStr = formatISO(currentWeekStart);
+  const studyGoal = Math.round((parseFloat(document.getElementById('goal-study').value) || 0) * 60);
+  const gapGoal   = Math.round((parseFloat(document.getElementById('goal-gap').value)   || 0) * 60);
+
+  // Upsert goals
+  await sb.from('weekly_goals').upsert({
+    user_id: currentUser.id, week_start: wsStr,
+    study_room_goal_minutes: studyGoal,
+    gap_goal_minutes: gapGoal,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id,week_start' });
+
+  // Upsert records
+  const rows = [];
+  for (let i = 0; i < 7; i++) {
+    const r = recData[i];
+    if (r && (r.study_minutes > 0 || r.gap_minutes > 0)) {
+      rows.push({
+        user_id: currentUser.id, week_start: wsStr, day_of_week: i,
+        study_minutes: r.study_minutes || 0,
+        gap_minutes:   r.gap_minutes   || 0,
+        updated_at: new Date().toISOString()
+      });
+    }
+  }
+  if (rows.length > 0) {
+    const { error } = await sb.from('records')
+      .upsert(rows, { onConflict: 'user_id,week_start,day_of_week' });
+    if (error) { showToast('❌ 保存エラー: ' + error.message); return; }
+  }
+
+  showToast('✅ 実績を保存しました！');
+}
+
+// ============================================================
+//  EVERYONE SCREEN
+// ============================================================
+function switchEvFilter(f) {
+  everyoneFilter = f;
+  document.getElementById('filter-week').classList.toggle('active',  f === 'week');
+  document.getElementById('filter-total').classList.toggle('active', f === 'total');
+  loadEveryoneScreen();
+}
+
+async function loadEveryoneScreen() {
+  const list = document.getElementById('everyone-list');
+  list.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const { data: profiles } = await sb.from('profiles').select('*');
+  if (!profiles?.length) { list.innerHTML = '<div class="empty-state">データがありません</div>'; return; }
+
+  let records, goals;
+  if (everyoneFilter === 'week') {
+    const wsStr = formatISO(getWeekStart());
+    ({ data: records } = await sb.from('records').select('*').eq('week_start', wsStr));
+    ({ data: goals }   = await sb.from('weekly_goals').select('*').eq('week_start', wsStr));
+  } else {
+    ({ data: records } = await sb.from('records').select('*'));
+    ({ data: goals }   = await sb.from('weekly_goals').select('*'));
+  }
+
+  const thisWeekStr = formatISO(getWeekStart());
+
+  const stats = profiles.map(p => {
+    const pRecs  = (records || []).filter(r => r.user_id === p.id);
+    const pGoals = (goals   || []).filter(g => g.user_id === p.id);
+
+    const study = pRecs.reduce((s, r) => s + (r.study_minutes || 0), 0);
+    const gap   = pRecs.reduce((s, r) => s + (r.gap_minutes   || 0), 0);
+    const total = study + gap;
+    const days  = pRecs.filter(r => r.study_minutes > 0).length;
+
+    const goalT = pGoals.reduce((s, g) =>
+      s + (g.study_room_goal_minutes || 0) + (g.gap_goal_minutes || 0), 0);
+    const rate  = goalT > 0 ? Math.round((total / goalT) * 100) : null;
+
+    // This week attendance dots
+    const dots = Array(7).fill(false);
+    (records || []).filter(r => r.user_id === p.id && r.week_start === thisWeekStr)
+      .forEach(r => { if (r.study_minutes > 0) dots[r.day_of_week] = true; });
+
+    return { p, study, gap, total, days, rate, dots };
+  });
+
+  stats.sort((a, b) => b.total - a.total);
+
+  const medals = ['🥇', '🥈', '🥉'];
+  list.innerHTML = stats.map((s, idx) => {
+    const isMe    = currentUser && s.p.id === currentUser.id;
+    const rankCls = idx === 0 ? 'rank-gold' : idx === 1 ? 'rank-silver' : idx === 2 ? 'rank-bronze' : '';
+    const rankLbl = idx < 3 ? medals[idx] : `${idx + 1}`;
+    const today   = new Date().getDay(); // 0=Sun => 6 in our system
+    const todayIdx = today === 0 ? 6 : today - 1;
+
+    const dotsHtml = s.dots.map((filled, i) =>
+      `<div class="rdot ${filled ? 'filled' : ''} ${filled && i === todayIdx ? 'today' : ''}"
+            title="${DAY_NAMES[i]}"></div>`
+    ).join('');
+
+    return `
+      <div class="rank-card ${isMe ? 'is-me' : ''}">
+        <div class="rank-num ${rankCls}">${rankLbl}</div>
+        <div class="rank-info">
+          <div class="rank-name">
+            ${getName(s.p)}
+            ${isMe ? '<span class="me-badge">あなた</span>' : ''}
+          </div>
+          ${s.p.grade ? `<div style="font-size:0.72rem;color:var(--blue);margin-top:2px">${s.p.grade}</div>` : ''}
+          <div class="rank-dots">${dotsHtml}</div>
+          <div class="rank-days">通塾 ${s.days}日</div>
+        </div>
+        <div class="rank-stats">
+          <div class="rank-time">${mToHM(s.total)}</div>
+          <div class="rank-rate">${s.rate !== null ? `達成率 ${Math.min(s.rate, 999)}%` : '目標未設定'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+//  MY RECORD SCREEN
+// ============================================================
+async function loadMyRecordScreen() {
+  const content = document.getElementById('myrecord-content');
+  content.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  // Build last 8 weeks
+  const weeks = [];
+  const now   = getWeekStart();
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    weeks.push(formatISO(d));
+  }
+
+  const [{ data: records }, { data: goals }] = await Promise.all([
+    sb.from('records').select('*').eq('user_id', currentUser.id).in('week_start', weeks),
+    sb.from('weekly_goals').select('*').eq('user_id', currentUser.id).in('week_start', weeks),
+  ]);
+
+  const ws = weeks.map(wk => {
+    const wRecs = (records || []).filter(r => r.week_start === wk);
+    const wGoal = (goals   || []).find(g => g.week_start === wk);
+    const study = wRecs.reduce((s, r) => s + (r.study_minutes || 0), 0);
+    const gap   = wRecs.reduce((s, r) => s + (r.gap_minutes   || 0), 0);
+    const total = study + gap;
+    const goalT = wGoal ? (wGoal.study_room_goal_minutes || 0) + (wGoal.gap_goal_minutes || 0) : 0;
+    const rate  = goalT > 0 ? Math.round((total / goalT) * 100) : null;
+    const d     = new Date(wk + 'T00:00:00');
+    return { wk, study, gap, total, goalT, rate, label: `${d.getMonth()+1}/${d.getDate()}` };
+  });
+
+  const maxTotal    = Math.max(...ws.map(w => w.total), 1);
+  const currentWkStr = formatISO(getWeekStart());
+  const allStudy    = ws.reduce((s, w) => s + w.study, 0);
+  const allGap      = ws.reduce((s, w) => s + w.gap,   0);
+
+  content.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:14px">📈 週間学習時間（直近8週）</h3>
+      <div class="chart-wrap">
+        ${ws.map(w => {
+          const pct  = Math.round((w.total / maxTotal) * 100);
+          const isCW = w.wk === currentWkStr;
+          return `
+            <div class="chart-col">
+              <div class="chart-col-val">${w.total > 0 ? Math.round(w.total/60)+'h' : ''}</div>
+              <div class="chart-bar-fill" style="height:${Math.max(pct,2)}%;background:${isCW ? 'var(--orange)' : 'var(--green)'}"></div>
+              <div class="chart-col-lbl">${w.label}</div>
+            </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:0.75rem;color:var(--text2)">
+        <span>■ <span style="color:var(--green)">通常週</span></span>
+        <span>■ <span style="color:var(--orange)">今週</span></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:14px">🎯 目標達成率</h3>
+      ${ws.map(w => {
+        const isCW  = w.wk === currentWkStr;
+        const pct   = w.rate !== null ? Math.min(w.rate, 100) : 0;
+        const rateC = w.rate >= 100 ? 'good' : w.rate !== null ? 'medium' : '';
+        return `
+          <div class="achieve-row">
+            <div class="achieve-row-head">
+              <span style="font-weight:${isCW ? '800' : '400'}">${w.label}〜${isCW ? ' 📍今週' : ''}</span>
+              <div class="achieve-row-right">
+                <span class="achieve-time">${mToHM(w.total)}</span>
+                <span class="achieve-rate ${rateC}">${w.rate !== null ? w.rate+'%' : '--'}</span>
+              </div>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-fill ${w.rate >= 100 ? 'green' : 'blue'}" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px">📊 8週間の累計</h3>
+      <div class="summary-grid">
+        <div>
+          <div class="summary-val green">${Math.round(allStudy/60)}h</div>
+          <div class="summary-lbl">自習室合計</div>
+        </div>
+        <div>
+          <div class="summary-val blue">${Math.round(allGap/60)}h</div>
+          <div class="summary-lbl">隙間時間合計</div>
+        </div>
+        <div>
+          <div class="summary-val orange">${Math.round((allStudy+allGap)/60)}h</div>
+          <div class="summary-lbl">総学習時間</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+//  ADMIN DISPLAY NAME HELPERS
+//  管理者が設定した表示名は admin_display_names テーブルに保存。
+//  生徒の profiles テーブルは一切変更しない。
+// ============================================================
+async function fetchAdminDisplayNames() {
+  const { data } = await sb.from('admin_display_names').select('*');
+  return data || [];
+}
+
+// 管理者画面用の表示名（管理者が設定していればそちらを優先）
+function getAdminDisplayName(profile, adminNames) {
+  if (!profile) return '不明';
+  const ov = (adminNames || []).find(n => n.user_id === profile.id);
+  return (ov && ov.display_name) ? ov.display_name : getName(profile);
+}
+
+// 管理者画面用の学年（管理者が設定していればそちらを優先）
+function getAdminDisplayGrade(profile, adminNames) {
+  if (!profile) return '';
+  const ov = (adminNames || []).find(n => n.user_id === profile.id);
+  return ov ? (ov.grade || '') : (profile.grade || '');
+}
+
+// ============================================================
+//  ADMIN SCREEN
+// ============================================================
+function isAdmin() {
+  return currentUser && ADMIN_EMAILS.includes(currentUser.email);
+}
+
+async function loadAdminScreen() {
+  if (!isAdmin()) {
+    document.getElementById('admin-content').innerHTML =
+      '<div class="empty-state">管理者権限がありません</div>';
+    return;
+  }
+  document.getElementById('admin-week-label').textContent = formatWeekLabel(adminWeekStart);
+  // アクティブなサブタブを呼び出す
+  if      (adminSubTab === 'status')   await loadAdminStatus();
+  else if (adminSubTab === 'comment')  await loadAdminComments();
+  else if (adminSubTab === 'students') await loadAdminStudents();
+  else if (adminSubTab === 'ranking')  await loadAdminRanking();
+}
+
+// 管理者直接ナビ（底部ナビから呼ばれる）
+async function showAdminDirect(tab) {
+  adminSubTab = tab;
+  currentScreen = 'admin';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-admin').classList.add('active');
+  // 底部ナビのアクティブ状態を更新
+  ['status','comment','students','ranking'].forEach(t => {
+    const navEl = document.getElementById(`nav-admin-${t}`);
+    if (navEl) navEl.classList.toggle('active', t === tab);
+    const subEl = document.getElementById(`asub-${t}`);
+    if (subEl) subEl.classList.toggle('active', t === tab);
+  });
+  await loadAdminScreen();
+}
+
+function switchAdminTab(tab) {
+  adminSubTab = tab;
+  ['status','comment','students','ranking'].forEach(t => {
+    const subEl = document.getElementById(`asub-${t}`);
+    if (subEl) subEl.classList.toggle('active', t === tab);
+    const navEl = document.getElementById(`nav-admin-${t}`);
+    if (navEl) navEl.classList.toggle('active', t === tab);
+  });
+  loadAdminScreen();
+}
+
+async function loadAdminStatus() {
+  const content = document.getElementById('admin-content');
+  content.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const wsStr   = formatISO(adminWeekStart);
+  const lastWs  = new Date(adminWeekStart);
+  lastWs.setDate(lastWs.getDate() - 7);
+  const lastStr = formatISO(lastWs);
+
+  const [{ data: profiles }, { data: records }, { data: goals },
+         { data: decls }, { data: lastRecs }, adminNames] = await Promise.all([
+    sb.from('profiles').select('*').order('name'),
+    sb.from('records').select('*').eq('week_start', wsStr),
+    sb.from('weekly_goals').select('*').eq('week_start', wsStr),
+    sb.from('declarations').select('*').eq('week_start', wsStr),
+    sb.from('records').select('*').eq('week_start', lastStr),
+    fetchAdminDisplayNames(),
+  ]);
+
+  // 講師（ADMIN_EMAILS）を除いた生徒リスト
+  const students = (profiles || []).filter(p => !ADMIN_EMAILS.includes(p.email));
+  if (!students.length) { content.innerHTML = '<div class="empty-state">生徒データがありません</div>'; return; }
+
+  // アラート生成
+  const alerts = [];
+  students.forEach(p => {
+    const pRecs     = (records   || []).filter(r => r.user_id === p.id);
+    const pLastRecs = (lastRecs  || []).filter(r => r.user_id === p.id);
+    const pGoal     = (goals     || []).find(g => g.user_id === p.id);
+    const days      = pRecs.filter(r => r.study_minutes > 0).length;
+    const lastDays  = pLastRecs.filter(r => r.study_minutes > 0).length;
+    const goalT     = pGoal ? (pGoal.study_room_goal_minutes || 0) + (pGoal.gap_goal_minutes || 0) : 0;
+
+    if (days === 0) {
+      alerts.push({ p, type: 'red', reason: '今週の通塾日数が0日です', aName: getAdminDisplayName(p, adminNames) });
+    } else if (lastDays - days >= 2) {
+      alerts.push({ p, type: 'red', reason: `先週${lastDays}日 → 今週${days}日（−${lastDays - days}日）`, aName: getAdminDisplayName(p, adminNames) });
+    }
+    if (goalT === 0) {
+      alerts.push({ p, type: 'orange', reason: '今週の目標時間が未設定です', aName: getAdminDisplayName(p, adminNames) });
+    }
+  });
+
+  // テーブルデータ生成
+  const rows = students.map(p => {
+    const pRecs  = (records || []).filter(r => r.user_id === p.id);
+    const pGoal  = (goals   || []).find(g => g.user_id === p.id);
+    const pDecls = (decls   || []).filter(d => d.user_id === p.id);
+    const study  = pRecs.reduce((s, r) => s + (r.study_minutes || 0), 0);
+    const gap    = pRecs.reduce((s, r) => s + (r.gap_minutes   || 0), 0);
+    const total  = study + gap;
+    const days   = pRecs.filter(r => r.study_minutes > 0).length;
+    const goalS  = pGoal?.study_room_goal_minutes || 0;
+    const goalG  = pGoal?.gap_goal_minutes        || 0;
+    const goalT  = goalS + goalG;
+    const rate   = goalT > 0 ? Math.round((total / goalT) * 100) : null;
+    const declT  = pDecls.reduce((s, d) => {
+      if (d.start_time && d.end_time) return s + Math.max(0, timeToMin(d.end_time) - timeToMin(d.start_time));
+      return s;
+    }, 0);
+    return { p, study, gap, total, days, rate, goalT, declT };
+  });
+
+  const alertHtml = alerts.length > 0 ? `
+    <div style="margin-bottom:14px">
+      <h3 style="margin-bottom:8px">🚨 要注意リスト</h3>
+      <div class="alert-list">
+        ${alerts.map(a => `
+          <div class="alert-card ${a.type}">
+            <div class="alert-dot ${a.type}"></div>
+            <div>
+              <div class="alert-name">${a.aName}</div>
+              <div class="alert-reason">${a.reason}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  content.innerHTML = alertHtml + `
+    <div class="admin-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>氏名</th><th>目標(h)</th><th>宣言(h)</th>
+            <th>自習室(h)</th><th>隙間(h)</th><th>合計(h)</th>
+            <th>通塾日</th><th>達成率</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td><strong>${getAdminDisplayName(r.p, adminNames)}</strong></td>
+              <td>${r.goalT > 0 ? (r.goalT/60).toFixed(1) : '-'}</td>
+              <td style="color:var(--blue)">${r.declT > 0 ? (r.declT/60).toFixed(1) : '-'}</td>
+              <td style="color:var(--green)">${r.study > 0 ? (r.study/60).toFixed(1) : '-'}</td>
+              <td style="color:var(--blue)">${r.gap   > 0 ? (r.gap/60).toFixed(1)   : '-'}</td>
+              <td><strong>${r.total > 0 ? (r.total/60).toFixed(1) : '-'}</strong></td>
+              <td>${r.days}日</td>
+              <td style="color:${r.rate >= 100 ? 'var(--green)' : r.rate !== null ? 'var(--blue)' : 'var(--text2)'}">
+                ${r.rate !== null ? r.rate + '%' : '-'}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function loadAdminComments() {
+  const content = document.getElementById('admin-content');
+  content.innerHTML = '<div class="loading">読み込み中...</div>';
+  const wsStr = formatISO(adminWeekStart);
+
+  const [{ data: profiles }, { data: existingComments }, adminNames] = await Promise.all([
+    sb.from('profiles').select('*').order('name'),
+    sb.from('teacher_comments').select('*').eq('week_id', wsStr),
+    fetchAdminDisplayNames(),
+  ]);
+
+  // 講師（ADMIN_EMAILS）を除いた生徒リスト
+  const students = (profiles || []).filter(p => !ADMIN_EMAILS.includes(p.email));
+  if (!students.length) { content.innerHTML = '<div class="empty-state">生徒データがありません</div>'; return; }
+
+  const STAMPS = ['⭐','🔥','👏','💪','📚','🎯'];
+
+  // 説明バナー
+  const infoBanner = `
+    <div style="font-size:0.78rem;color:var(--text2);margin-bottom:14px;
+                padding:10px 14px;background:var(--blue-light);border-radius:8px;
+                border-left:3px solid var(--blue);line-height:1.6">
+      💡 <strong style="color:var(--blue)">送信したスタンプ・コメントの表示場所</strong><br>
+      生徒がアプリを開いたとき、<strong>「宣言・実績」画面の上部</strong>（目標入力欄のすぐ下）に
+      「💬 講師からのメッセージ」として表示されます。<br>
+      表示されるのは<strong>その週の週番号に対応したコメント</strong>のみです。
+    </div>`;
+
+  content.innerHTML = infoBanner + students.map(p => {
+    const existing = (existingComments || []).find(c => c.target_user_id === p.id);
+    const savedStamps  = existing?.stamps  || [];
+    const savedComment = existing?.comment || '';
+    const previewHtml  = (savedStamps.length > 0 || savedComment)
+      ? `<div class="comment-preview">${savedStamps.join(' ')} ${savedComment}</div>` : '';
+
+    const stampsHtml = STAMPS.map(s =>
+      `<button class="stamp-btn ${savedStamps.includes(s) ? 'selected' : ''}"
+               onclick="toggleStamp(this,'${p.id}')">${s}</button>`
+    ).join('');
+
+    return `
+      <div class="comment-student-card" id="ccard-${p.id}">
+        <div class="comment-student-header" onclick="toggleCommentExpand('${p.id}')">
+          <div class="comment-student-name">${getAdminDisplayName(p, adminNames)}</div>
+          <span class="comment-expand-icon" id="cicon-${p.id}">▼</span>
+        </div>
+        <div class="comment-student-body" id="cbody-${p.id}" style="display:none">
+          <div class="stamp-row" id="stamps-${p.id}">${stampsHtml}</div>
+          <textarea class="comment-textarea" id="ctext-${p.id}" placeholder="コメントを入力...">${savedComment}</textarea>
+          <button class="comment-send-btn" onclick="saveAdminComment('${p.id}','${wsStr}')">💬 送信</button>
+          ${previewHtml}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleCommentExpand(userId) {
+  const body  = document.getElementById(`cbody-${userId}`);
+  const icon  = document.getElementById(`cicon-${userId}`);
+  const open  = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  icon.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function toggleStamp(btn, userId) {
+  btn.classList.toggle('selected');
+}
+
+async function saveAdminComment(userId, weekId) {
+  const stampsEl  = document.querySelectorAll(`#stamps-${userId} .stamp-btn.selected`);
+  const stamps    = Array.from(stampsEl).map(b => b.textContent);
+  const comment   = document.getElementById(`ctext-${userId}`).value.trim();
+
+  const { error } = await sb.from('teacher_comments').upsert({
+    target_user_id: userId,
+    week_id:        weekId,
+    stamps,
+    comment,
+    created_by:     currentUser.id,
+    updated_at:     new Date().toISOString()
+  }, { onConflict: 'target_user_id,week_id' });
+
+  if (error) { showToast('❌ 送信失敗: ' + error.message); return; }
+  showToast('✅ コメントを送信しました！');
+
+  // プレビュー更新
+  const card = document.getElementById(`ccard-${userId}`);
+  let preview = card.querySelector('.comment-preview');
+  if (!preview) {
+    preview = document.createElement('div');
+    preview.className = 'comment-preview';
+    card.querySelector('.comment-student-body').appendChild(preview);
+  }
+  preview.textContent = stamps.join(' ') + ' ' + comment;
+}
+
+async function loadAdminStudents() {
+  const content = document.getElementById('admin-content');
+  content.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const [{ data: profiles }, adminNames] = await Promise.all([
+    sb.from('profiles').select('*').order('name'),
+    fetchAdminDisplayNames(),
+  ]);
+  if (!profiles?.length) { content.innerHTML = '<div class="empty-state">生徒データがありません</div>'; return; }
+
+  const GRADES = ['', '中学1年生', '中学2年生', '中学3年生', '高校1年生', '高校2年生', '高校3年生', '既卒'];
+
+  // 講師（ADMIN_EMAILS）と生徒を分ける
+  const adminProfile    = profiles.filter(p =>  ADMIN_EMAILS.includes(p.email));
+  const studentProfiles = profiles.filter(p => !ADMIN_EMAILS.includes(p.email));
+
+  // カード生成ヘルパー
+  function buildMgmtCard(p, isTeacher) {
+    const displayName  = getAdminDisplayName(p, adminNames);
+    const displayGrade = getAdminDisplayGrade(p, adminNames);
+    const gradeOptions = GRADES.map(g =>
+      `<option value="${g}" ${g === displayGrade ? 'selected' : ''}>${g || '（学年未設定）'}</option>`
+    ).join('');
+    return `
+      <div class="student-mgmt-card">
+        <div class="student-mgmt-row">
+          <div class="student-mgmt-info">
+            <div class="student-mgmt-name" style="display:flex;align-items:center;gap:8px">
+              ${displayName}
+              ${isTeacher ? '<span class="teacher-badge">👩‍🏫 講師</span>' : ''}
+            </div>
+            <div class="student-mgmt-sub">
+              ${displayGrade ? `<span class="grade-tag">${displayGrade}</span>` : ''}
+            </div>
+          </div>
+          <button class="student-edit-btn" onclick="toggleStudentEdit('${p.id}')">編集</button>
+        </div>
+        <div class="student-edit-form" id="sedit-${p.id}">
+          <div class="form-group" style="margin-top:10px">
+            <label class="form-label">管理者画面での表示名</label>
+            <input type="text" class="form-input" id="sname-${p.id}" value="${displayName}">
+          </div>
+          ${!isTeacher ? `
+          <div class="form-group">
+            <label class="form-label">学年</label>
+            <select class="grade-select" id="sgrade-${p.id}">${gradeOptions}</select>
+          </div>` : ''}
+          <button class="btn btn-blue" style="margin-top:4px"
+                  onclick="saveStudentProfile('${p.id}')">💾 保存</button>
+        </div>
+      </div>`;
+  }
+
+  const noteBanner = `
+    <div style="font-size:0.78rem;color:var(--text2);margin-bottom:14px;
+                padding:10px 14px;background:var(--orange-light);border-radius:8px;
+                border-left:3px solid var(--orange);line-height:1.6">
+      ℹ️ <strong style="color:var(--orange)">管理者画面専用の表示名・学年です</strong><br>
+      ここで変更した内容は<strong>管理者画面にのみ反映</strong>されます。
+      生徒側の画面には影響しません。
+    </div>`;
+
+  const teacherSection = adminProfile.length ? `
+    <div class="section-divider">👩‍🏫 講師</div>
+    ${adminProfile.map(p => buildMgmtCard(p, true)).join('')}` : '';
+
+  const studentSection = studentProfiles.length ? `
+    <div class="section-divider">👥 生徒一覧（${studentProfiles.length}名）</div>
+    ${studentProfiles.map(p => buildMgmtCard(p, false)).join('')}` : '';
+
+  content.innerHTML = noteBanner + teacherSection + studentSection;
+}
+
+function toggleStudentEdit(userId) {
+  const form = document.getElementById(`sedit-${userId}`);
+  form.classList.toggle('open');
+}
+
+async function saveStudentProfile(userId) {
+  const name  = document.getElementById(`sname-${userId}`).value.trim();
+  const grade = document.getElementById(`sgrade-${userId}`).value;
+  if (!name) { showToast('表示名を入力してください'); return; }
+
+  // 管理者専用テーブルに保存（生徒の profiles は変更しない）
+  const { error } = await sb.from('admin_display_names').upsert({
+    user_id:      userId,
+    display_name: name,
+    grade:        grade,
+    updated_at:   new Date().toISOString()
+  }, { onConflict: 'user_id' });
+
+  if (error) { showToast('❌ 保存失敗: ' + error.message); return; }
+
+  showToast('✅ 保存しました！（管理者画面のみ反映）');
+  document.getElementById(`sedit-${userId}`).classList.remove('open');
+  await loadAdminStudents(); // リロード
+}
+
+// ============================================================
+//  ADMIN RANKING
+// ============================================================
+async function loadAdminRanking() {
+  const content = document.getElementById('admin-content');
+  content.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const wsStr = formatISO(adminWeekStart);
+
+  const [{ data: profiles }, { data: weekRecs }, { data: allRecs },
+         { data: goals }, adminNames] = await Promise.all([
+    sb.from('profiles').select('*'),
+    sb.from('records').select('*').eq('week_start', wsStr),
+    sb.from('records').select('*'),
+    sb.from('weekly_goals').select('*').eq('week_start', wsStr),
+    fetchAdminDisplayNames(),
+  ]);
+
+  // 講師（ADMIN_EMAILS）を除いた生徒リスト
+  const students = (profiles || []).filter(p => !ADMIN_EMAILS.includes(p.email));
+  if (!students.length) {
+    content.innerHTML = '<div class="empty-state">データがありません</div>';
+    return;
+  }
+
+  // 今週・累計それぞれの集計
+  const stats = students.map(p => {
+    const pWeekRecs = (weekRecs || []).filter(r => r.user_id === p.id);
+    const pAllRecs  = (allRecs  || []).filter(r => r.user_id === p.id);
+    const pGoal     = (goals    || []).find(g => g.user_id === p.id);
+
+    const weekStudy = pWeekRecs.reduce((s, r) => s + (r.study_minutes || 0), 0);
+    const weekGap   = pWeekRecs.reduce((s, r) => s + (r.gap_minutes   || 0), 0);
+    const weekTotal = weekStudy + weekGap;
+    const weekDays  = pWeekRecs.filter(r => r.study_minutes > 0).length;
+
+    const allStudy  = pAllRecs.reduce((s, r) => s + (r.study_minutes || 0), 0);
+    const allGap    = pAllRecs.reduce((s, r) => s + (r.gap_minutes   || 0), 0);
+    const allTotal  = allStudy + allGap;
+    const allDays   = pAllRecs.filter(r => r.study_minutes > 0).length;
+
+    const goalT = pGoal ? (pGoal.study_room_goal_minutes || 0) + (pGoal.gap_goal_minutes || 0) : 0;
+    const rate  = goalT > 0 ? Math.round((weekTotal / goalT) * 100) : null;
+
+    // 今週の出席ドット
+    const dots = Array(7).fill(false);
+    pWeekRecs.forEach(r => { if (r.study_minutes > 0) dots[r.day_of_week] = true; });
+
+    return {
+      p, weekTotal, weekDays, allTotal, allDays, rate, dots,
+      displayName:  getAdminDisplayName(p, adminNames),
+      displayGrade: getAdminDisplayGrade(p, adminNames),
+    };
+  });
+
+  // 今週合計で並び替え
+  const sorted = [...stats].sort((a, b) => b.weekTotal - a.weekTotal);
+
+  const medals   = ['🥇', '🥈', '🥉'];
+  const today    = new Date().getDay();
+  const todayIdx = today === 0 ? 6 : today - 1;
+
+  const rankRows = sorted.map((s, idx) => {
+    const rankCls = idx === 0 ? 'rank-gold' : idx === 1 ? 'rank-silver' : idx === 2 ? 'rank-bronze' : '';
+    const rankLbl = idx < 3 ? medals[idx] : `${idx + 1}`;
+    const dotsHtml = s.dots.map((filled, i) =>
+      `<div class="rdot ${filled ? 'filled' : ''} ${filled && i === todayIdx ? 'today' : ''}"
+            title="${DAY_NAMES[i]}"></div>`
+    ).join('');
+    return `
+      <div class="rank-card">
+        <div class="rank-num ${rankCls}">${rankLbl}</div>
+        <div class="rank-info">
+          <div class="rank-name">${s.displayName}</div>
+          ${s.displayGrade ? `<div style="font-size:0.72rem;color:var(--blue);margin-top:2px">${s.displayGrade}</div>` : ''}
+          <div class="rank-dots">${dotsHtml}</div>
+          <div class="rank-days">今週 ${s.weekDays}日 ／ 累計 ${s.allDays}日</div>
+        </div>
+        <div class="rank-stats">
+          <div class="rank-time">${mToHM(s.weekTotal)}</div>
+          <div class="rank-rate">${s.rate !== null ? `達成率 ${Math.min(s.rate,999)}%` : '目標未設定'}</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:2px">累計 ${mToH(s.allTotal)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div style="font-size:0.78rem;color:var(--text2);margin-bottom:12px;
+                padding:8px 12px;background:var(--surface2);border-radius:8px">
+      📅 表示中の週の学習時間で順位を表示しています。週ナビ（‹ ›）で週を変えられます。
+    </div>
+    ${rankRows}`;
+}
+
+// ============================================================
+//  SESSION HANDLER（ログイン後の共通処理）
+// ============================================================
+async function handleSession(session) {
+  // 二重実行防止
+  if (currentUser && currentUser.id === session.user.id) return;
+
+  currentUser = session.user;
+
+  // ① まず画面を切り替える（エラーがあっても表示する）
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display  = 'block';
+
+  try {
+    // ② プロフィール取得（なければ作成）
+    let { data: profile } = await sb.from('profiles').select('*')
+      .eq('id', currentUser.id).maybeSingle();
+
+    if (!profile) {
+      const name = currentUser.user_metadata?.name || currentUser.email.split('@')[0];
+      const { data: newP } = await sb.from('profiles')
+        .upsert({ id: currentUser.id, name, email: currentUser.email }, { onConflict: 'id' })
+        .select().maybeSingle();
+      profile = newP || { id: currentUser.id, name, email: currentUser.email };
+    } else if (!profile.email) {
+      // 既存ユーザーでメールが未保存の場合は補完
+      await sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id);
+      profile.email = currentUser.email;
+    }
+
+    currentProfile = profile;
+    document.getElementById('header-name').textContent = getName(profile);
+
+    if (isAdmin()) {
+      // 管理者: 一般タブを非表示にして管理者タブを表示
+      document.getElementById('nav-declaration').style.display    = 'none';
+      document.getElementById('nav-everyone').style.display       = 'none';
+      document.getElementById('nav-myrecord').style.display       = 'none';
+      document.getElementById('nav-admin-status').style.display   = 'flex';
+      document.getElementById('nav-admin-comment').style.display  = 'flex';
+      document.getElementById('nav-admin-students').style.display = 'flex';
+      document.getElementById('nav-admin-ranking').style.display  = 'flex';
+      await showAdminDirect('status');
+    } else {
+      await loadDeclarationScreen();
+    }
+  } catch (e) {
+    console.error('初期化エラー:', e);
+    showToast('⚠️ エラー: ' + e.message, 5000);
+  }
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+async function init() {
+  // 既存セッションの確認
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await handleSession(session);
+
+  // 以降の認証変化を監視
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      await handleSession(session);
+    } else {
+      currentUser    = null;
+      currentProfile = null;
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app-screen').style.display  = 'none';
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
